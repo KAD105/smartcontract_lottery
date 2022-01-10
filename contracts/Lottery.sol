@@ -15,15 +15,16 @@ contract Lottery is VRFConsumerBase, Ownable {
 
   enum LOTTERY_STATE {
     OPEN,
-    CLOSE,
-    CALCULATING_STATE
+    CLOSED,
+    CALCULATING_WINNER
   }
   // LOTTERY_STATE is a type.
-  // OPEN, CLOSE, CALCULATING_STATE = 0,1,2
+  // OPEN, CLOSED, CALCULATING_WINNER = 0,1,2
 
   LOTTERY_STATE public lottery_state;
   uint256 public fee;
   bytes32 public keyhash;
+  event RequestedRandomness(bytes32 requestId);
 
   constructor(
     address _priceFeedAddress,
@@ -34,16 +35,16 @@ contract Lottery is VRFConsumerBase, Ownable {
   ) public VRFConsumerBase(_vrfCoordinator, _link) {
     usdEntryFee = 50 * (10**18);
     ethUsdPriceFeed = AggregatorV3Interface(_priceFeedAddress);
-    lottery_state = LOTTERY_STATE.CLOSE;
-    // We can also set it close like this: lottery_state = 1
+    lottery_state = LOTTERY_STATE.CLOSED;
+    // We can also set it CLOSED like this: lottery_state = 1
     fee = _fee;
     keyhash = _keyhash;
   }
 
   function enter() public payable {
     // 50$ minimum
-    require(msg.value >= getEnteranceFee(), "Not enough Eth!");
     require(lottery_state == LOTTERY_STATE.OPEN);
+    require(msg.value >= getEnteranceFee(), "Not enough Eth!");
     palyers.push(msg.sender);
   }
 
@@ -55,13 +56,17 @@ contract Lottery is VRFConsumerBase, Ownable {
   }
 
   function startLottery() public onlyOwner {
-    require(lottery_state == LOTTERY_STATE.CLOSE, "Can't start a lottery yet!");
-    require(lottery_state == LOTTERY_STATE.OPEN);
+    require(
+      lottery_state == LOTTERY_STATE.CLOSED,
+      "Can't start a new lottery yet!"
+    );
+    lottery_state = LOTTERY_STATE.OPEN;
   }
 
   function endLottery() public onlyOwner {
-    lottery_state = LOTTERY_STATE.CALCULATING_STATE;
+    lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
     bytes32 requestId = requestRandomness(keyhash, fee);
+    emit RequestedRandomness(requestId);
   }
 
   function fulfillRandomness(bytes32 _requestId, uint256 _randomness)
@@ -69,7 +74,7 @@ contract Lottery is VRFConsumerBase, Ownable {
     override
   {
     require(
-      lottery_state == LOTTERY_STATE.CALCULATING_STATE,
+      lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
       "you aren't there yet"
     );
     require(_randomness > 0, "No random number found");
@@ -79,7 +84,7 @@ contract Lottery is VRFConsumerBase, Ownable {
 
     //Rest
     palyers = new address payable[](0);
-    lottery_state = LOTTERY_STATE.CLOSE;
+    lottery_state = LOTTERY_STATE.CLOSED;
     randomness = _randomness;
   }
 }
