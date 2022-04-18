@@ -44,11 +44,11 @@ contract Lottery is VRFConsumerBase, Ownable {
   function enter() public payable {
     // 50$ minimum
     require(lottery_state == LOTTERY_STATE.OPEN);
-    require(msg.value >= getEnteranceFee(), "Not enough Eth!");
+    require(msg.value >= getEntranceFee(), "Not enough Eth!");
     palyers.push(msg.sender);
   }
 
-  function getEnteranceFee() public view returns (uint256) {
+  function getEntranceFee() public view returns (uint256) {
     (, int256 price, , , ) = ethUsdPriceFeed.latestRoundData();
     uint256 adjustedPrice = uint256(price) * 10**10; // 8 (already in chainlink mix) + 10 (here) = 18 decimals
     uint256 costToEnter = (usdEntryFee * 10**18) / adjustedPrice;
