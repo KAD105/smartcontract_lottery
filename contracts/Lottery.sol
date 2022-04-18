@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.6/VRFConsumerBase.sol";
 
 contract Lottery is VRFConsumerBase, Ownable {
-  address payable[] public palyers;
+  address payable[] public players;
   address payable public recentWinner;
   uint256 public randomness;
   uint256 public usdEntryFee;
@@ -24,7 +24,7 @@ contract Lottery is VRFConsumerBase, Ownable {
   LOTTERY_STATE public lottery_state;
   uint256 public fee;
   bytes32 public keyhash;
-  event RequestedRandomness(bytes32 requestId);
+  event requestedRandomness(bytes32 requestId);
 
   constructor(
     address _priceFeedAddress,
@@ -45,7 +45,7 @@ contract Lottery is VRFConsumerBase, Ownable {
     // 50$ minimum
     require(lottery_state == LOTTERY_STATE.OPEN);
     require(msg.value >= getEntranceFee(), "Not enough Eth!");
-    palyers.push(msg.sender);
+    players.push(msg.sender);
   }
 
   function getEntranceFee() public view returns (uint256) {
@@ -66,7 +66,7 @@ contract Lottery is VRFConsumerBase, Ownable {
   function endLottery() public onlyOwner {
     lottery_state = LOTTERY_STATE.CALCULATING_WINNER;
     bytes32 requestId = requestRandomness(keyhash, fee);
-    emit RequestedRandomness(requestId);
+    emit requestedRandomness(requestId);
   }
 
   function fulfillRandomness(bytes32 _requestId, uint256 _randomness)
@@ -78,12 +78,12 @@ contract Lottery is VRFConsumerBase, Ownable {
       "you aren't there yet"
     );
     require(_randomness > 0, "No random number found");
-    uint256 indexOfWinner = _randomness % palyers.length;
-    recentWinner = palyers[indexOfWinner];
+    uint256 indexOfWinner = _randomness % players.length;
+    recentWinner = players[indexOfWinner];
     recentWinner.transfer(address(this).balance);
 
     //Rest
-    palyers = new address payable[](0);
+    players = new address payable[](0);
     lottery_state = LOTTERY_STATE.CLOSED;
     randomness = _randomness;
   }
